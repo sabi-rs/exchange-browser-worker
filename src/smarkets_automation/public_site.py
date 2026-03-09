@@ -18,3 +18,7 @@ def load_public_page_html(url: str) -> str:
             return page.content()
         finally:
             browser.close()
+
+
+def load_event_page_html(event_url: str) -> str:
+    return load_public_page_html(event_url)
