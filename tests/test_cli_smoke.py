@@ -1,5 +1,8 @@
 import tomllib
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -60,3 +63,21 @@ def test_pyproject_declares_smarkets_console_script() -> None:
     pyproject = tomllib.loads(pyproject_path.read_text())
 
     assert pyproject["project"]["scripts"]["smarkets"] == "smarkets_automation.cli:main"
+
+
+def test_python_m_cli_invokes_main() -> None:
+    root = Path(__file__).resolve().parents[1]
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(root / "src")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "smarkets_automation.cli", "--help"],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "usage:" in result.stdout
