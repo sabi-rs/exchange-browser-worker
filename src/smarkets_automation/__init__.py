@@ -1,0 +1,2 @@
+"""Smarkets automation package."""
+

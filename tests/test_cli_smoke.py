@@ -1,0 +1,57 @@
+import tomllib
+from pathlib import Path
+
+import pytest
+
+from smarkets_automation.cli import build_parser
+
+
+EXPECTED_COMMANDS = {
+    "bootstrap-session",
+    "login",
+    "search-events",
+    "show-market",
+    "place-bet",
+}
+
+
+def test_build_parser_exposes_expected_commands() -> None:
+    parser = build_parser()
+
+    for command in EXPECTED_COMMANDS - {"place-bet"}:
+        assert parser.parse_args([command]).command == command
+
+    assert (
+        parser.parse_args(
+            [
+                "place-bet",
+                "--event-url",
+                "https://smarkets.com/example",
+                "--contract",
+                "Arsenal",
+                "--available-contract",
+                "Arsenal",
+                "--available-contract",
+                "Draw",
+                "--available-contract",
+                "Everton",
+                "--side",
+                "buy",
+                "--stake",
+                "10",
+            ],
+        ).command
+        == "place-bet"
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        parser.parse_args(["unknown-command"])
+
+    assert excinfo.value.code == 2
+
+
+def test_pyproject_declares_smarkets_console_script() -> None:
+    pyproject_path = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    pyproject = tomllib.loads(pyproject_path.read_text())
+
+    assert pyproject["project"]["scripts"]["smarkets"] == "smarkets_automation.cli:main"
