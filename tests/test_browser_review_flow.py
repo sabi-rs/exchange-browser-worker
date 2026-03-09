@@ -33,6 +33,7 @@ def test_place_bet_review_mode_calls_review_execution(
         ),
     )
     monkeypatch.setattr(cli, "write_action_log", lambda logs_dir, payload: tmp_path / "mock-log.json")
+    monkeypatch.setattr(cli, "execute_confirm_bet", lambda profile_dir, plan: None)
     monkeypatch.setattr(
         cli,
         "execute_review_bet",

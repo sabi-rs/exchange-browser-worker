@@ -4,6 +4,7 @@ from pathlib import Path
 from smarkets_automation.bootstrap import ensure_copyable_helium_profile
 from smarkets_automation.browser import (
     browser_launch_args,
+    execute_confirm_bet,
     execute_review_bet,
     launch_login_browser,
 )
@@ -99,7 +100,9 @@ def main(argv: list[str] | None = None) -> int:
             confirm=args.confirm,
         )
         profile_dir = AppPaths.from_home(Path.home()).profile_dir
-        if not plan.confirm:
+        if plan.confirm:
+            execute_confirm_bet(profile_dir, plan)
+        else:
             execute_review_bet(profile_dir, plan)
         status = "confirm" if plan.confirm else "review"
         write_action_log(

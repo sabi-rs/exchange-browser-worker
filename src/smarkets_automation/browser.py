@@ -67,10 +67,22 @@ def _populate_bet_slip(profile_dir: Path, plan: PreflightPlan):
         raise ValueError("Requested side button was not found on the live page")
 
     side_button.first.click()
-    return playwright, context
+    return playwright, context, page
 
 
 def execute_review_bet(profile_dir: Path, plan: PreflightPlan) -> None:
-    playwright, context = _populate_bet_slip(profile_dir, plan)
+    playwright, context, _page = _populate_bet_slip(profile_dir, plan)
+    context.close()
+    playwright.stop()
+
+
+def execute_confirm_bet(profile_dir: Path, plan: PreflightPlan) -> None:
+    playwright, context, page = _populate_bet_slip(profile_dir, plan)
+    submit_button = page.get_by_role("button", name="Place bet")
+    if submit_button.count() == 0:
+        context.close()
+        playwright.stop()
+        raise ValueError("Final submit button was not found on the live page")
+    submit_button.first.click()
     context.close()
     playwright.stop()
