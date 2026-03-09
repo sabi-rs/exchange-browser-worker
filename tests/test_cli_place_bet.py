@@ -5,6 +5,10 @@ import pytest
 from smarkets_automation import cli
 from smarkets_automation.config import AppPaths
 from smarkets_automation.cli import main
+from smarkets_automation.market_snapshot import (
+    StandardContractSnapshot,
+    StandardMarketSnapshot,
+)
 
 
 def test_place_bet_review_mode_prints_preflight_summary(
@@ -14,6 +18,19 @@ def test_place_bet_review_mode_prints_preflight_summary(
 ) -> None:
     monkeypatch.setattr(cli, "write_action_log", lambda logs_dir, payload: tmp_path / "mock-log.json")
     monkeypatch.setattr(cli.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "load_standard_market_snapshot",
+        lambda event_url: StandardMarketSnapshot(
+            event_url=event_url,
+            market_name="Full-time result",
+            contracts=[
+                StandardContractSnapshot("Arsenal", "73%", "74%"),
+                StandardContractSnapshot("Draw", "18%", "19%"),
+                StandardContractSnapshot("Everton", "8%", "8%"),
+            ],
+        ),
+    )
 
     exit_code = main(
         [
@@ -22,12 +39,6 @@ def test_place_bet_review_mode_prints_preflight_summary(
             "https://smarkets.com/football/example",
             "--contract",
             "Arsenal",
-            "--available-contract",
-            "Arsenal",
-            "--available-contract",
-            "Draw",
-            "--available-contract",
-            "Everton",
             "--side",
             "buy",
             "--stake",
@@ -58,6 +69,19 @@ def test_place_bet_writes_audit_log(
     captured_log: dict[str, object] = {}
 
     monkeypatch.setattr(cli.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "load_standard_market_snapshot",
+        lambda event_url: StandardMarketSnapshot(
+            event_url=event_url,
+            market_name="Full-time result",
+            contracts=[
+                StandardContractSnapshot("Arsenal", "73%", "74%"),
+                StandardContractSnapshot("Draw", "18%", "19%"),
+                StandardContractSnapshot("Everton", "8%", "8%"),
+            ],
+        ),
+    )
 
     def fake_write_action_log(logs_dir: Path, payload: dict[str, object]) -> Path:
         captured_log["logs_dir"] = logs_dir
@@ -73,12 +97,6 @@ def test_place_bet_writes_audit_log(
             "https://smarkets.com/football/example",
             "--contract",
             "Arsenal",
-            "--available-contract",
-            "Arsenal",
-            "--available-contract",
-            "Draw",
-            "--available-contract",
-            "Everton",
             "--side",
             "buy",
             "--stake",
@@ -104,6 +122,18 @@ def test_place_bet_fails_closed_for_unknown_contract(
 ) -> None:
     monkeypatch.setattr(cli, "write_action_log", lambda logs_dir, payload: tmp_path / "mock-log.json")
     monkeypatch.setattr(cli.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "load_standard_market_snapshot",
+        lambda event_url: StandardMarketSnapshot(
+            event_url=event_url,
+            market_name="Full-time result",
+            contracts=[
+                StandardContractSnapshot("Draw", "18%", "19%"),
+                StandardContractSnapshot("Everton", "8%", "8%"),
+            ],
+        ),
+    )
 
     with pytest.raises(ValueError):
         main(
@@ -113,13 +143,47 @@ def test_place_bet_fails_closed_for_unknown_contract(
                 "https://smarkets.com/football/example",
                 "--contract",
                 "Arsenal",
-                "--available-contract",
-                "Draw",
-                "--available-contract",
-                "Everton",
                 "--side",
                 "buy",
                 "--stake",
                 "10",
             ],
         )
+
+
+def test_place_bet_uses_live_market_snapshot_contracts(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(cli.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "load_standard_market_snapshot",
+        lambda event_url: StandardMarketSnapshot(
+            event_url=event_url,
+            market_name="Full-time result",
+            contracts=[
+                StandardContractSnapshot("Arsenal", "73%", "74%"),
+                StandardContractSnapshot("Draw", "18%", "19%"),
+                StandardContractSnapshot("Everton", "8%", "8%"),
+            ],
+        ),
+    )
+    monkeypatch.setattr(cli, "write_action_log", lambda logs_dir, payload: tmp_path / "mock-log.json")
+
+    assert (
+        cli.main(
+            [
+                "place-bet",
+                "--event-url",
+                "https://smarkets.com/football/example",
+                "--contract",
+                "Arsenal",
+                "--side",
+                "buy",
+                "--stake",
+                "10",
+            ],
+        )
+        == 0
+    )

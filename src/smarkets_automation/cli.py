@@ -37,12 +37,6 @@ def build_parser() -> argparse.ArgumentParser:
         if command == "place-bet":
             command_parser.add_argument("--event-url", required=True)
             command_parser.add_argument("--contract", required=True)
-            command_parser.add_argument(
-                "--available-contract",
-                action="append",
-                dest="available_contracts",
-                required=True,
-            )
             command_parser.add_argument("--side", required=True)
             command_parser.add_argument("--stake", required=True)
             command_parser.add_argument("--confirm", action="store_true")
@@ -91,9 +85,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{contract.label}{buy_percent}{sell_percent}")
 
     if args.command == "place-bet":
+        snapshot = load_standard_market_snapshot(args.event_url)
         plan = build_preflight(
             event_url=args.event_url,
-            contract_labels=args.available_contracts,
+            contract_labels=snapshot.contract_labels(),
             requested_contract=args.contract,
             side=args.side,
             stake=args.stake,
