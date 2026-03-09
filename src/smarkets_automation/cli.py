@@ -17,6 +17,7 @@ from smarkets_automation.public_site import (
     absolute_smarkets_url,
     load_event_page_html,
     load_public_page_html,
+    load_search_results_html,
 )
 
 
@@ -51,7 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def search_event_candidates(query: str) -> list[tuple[str, str]]:
     candidates = filter_event_candidates(
-        parse_search_results(load_public_page_html("/")),
+        parse_search_results(load_search_results_html(query)),
         query,
     )
     if not candidates:
