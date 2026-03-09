@@ -1,38 +1,21 @@
 import os
-import re
-from pathlib import Path
 
 import pytest
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-from playwright.sync_api import expect, sync_playwright
 
-from smarkets_automation.config import AppPaths
+from smarkets_automation.cli import load_standard_market_snapshot
+
+
+DEFAULT_LIVE_EVENT_URL = (
+    "https://smarkets.com/event/44407959/sport/football/"
+    "england-premier-league/2025/05/11/15-30/liverpool-vs-arsenal"
+)
 
 
 @pytest.mark.skipif(os.environ.get("SMARKETS_LIVE") != "1", reason="live smoke disabled")
-def test_login_or_member_page_opens_from_owned_profile() -> None:
-    profile_dir = AppPaths.from_home(Path.home()).profile_dir
-    profile_dir.mkdir(parents=True, exist_ok=True)
+def test_show_market_live_smoke() -> None:
+    event_url = os.environ.get("SMARKETS_LIVE_EVENT_URL", DEFAULT_LIVE_EVENT_URL)
 
-    with sync_playwright() as playwright:
-        context = playwright.chromium.launch_persistent_context(
-            user_data_dir=str(profile_dir),
-            headless=True,
-        )
-        page = context.pages[0] if context.pages else context.new_page()
+    snapshot = load_standard_market_snapshot(event_url)
 
-        try:
-            page.goto("https://smarkets.com", wait_until="domcontentloaded")
-            expect(page).to_have_title(re.compile("Smarkets"))
-
-            login_button = page.get_by_role("button", name="Log in")
-            try:
-                login_button.wait_for(state="visible", timeout=5000)
-            except PlaywrightTimeoutError:
-                assert page.url.startswith("https://smarkets.com/")
-            else:
-                login_button.click()
-                expect(page).to_have_url(re.compile(r"login=true"))
-                expect(page.get_by_role("textbox").first).to_be_visible()
-        finally:
-            context.close()
+    assert snapshot.market_name == "Full-time result"
+    assert "Arsenal" in snapshot.contract_labels()
