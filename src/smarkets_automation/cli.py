@@ -2,7 +2,11 @@ import argparse
 from pathlib import Path
 
 from smarkets_automation.bootstrap import ensure_copyable_helium_profile
-from smarkets_automation.browser import browser_launch_args, launch_login_browser
+from smarkets_automation.browser import (
+    browser_launch_args,
+    execute_review_bet,
+    launch_login_browser,
+)
 from smarkets_automation.config import AppPaths, detect_helium_profile
 from smarkets_automation.discovery import filter_event_candidates, parse_search_results
 from smarkets_automation.logging_utils import write_action_log
@@ -94,6 +98,9 @@ def main(argv: list[str] | None = None) -> int:
             stake=args.stake,
             confirm=args.confirm,
         )
+        profile_dir = AppPaths.from_home(Path.home()).profile_dir
+        if not plan.confirm:
+            execute_review_bet(profile_dir, plan)
         status = "confirm" if plan.confirm else "review"
         write_action_log(
             AppPaths.from_home(Path.home()).logs_dir,

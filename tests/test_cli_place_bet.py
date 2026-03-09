@@ -31,6 +31,7 @@ def test_place_bet_review_mode_prints_preflight_summary(
             ],
         ),
     )
+    monkeypatch.setattr(cli, "execute_review_bet", lambda profile_dir, plan: None)
 
     exit_code = main(
         [
@@ -82,6 +83,7 @@ def test_place_bet_writes_audit_log(
             ],
         ),
     )
+    monkeypatch.setattr(cli, "execute_review_bet", lambda profile_dir, plan: None)
 
     def fake_write_action_log(logs_dir: Path, payload: dict[str, object]) -> Path:
         captured_log["logs_dir"] = logs_dir
@@ -134,6 +136,7 @@ def test_place_bet_fails_closed_for_unknown_contract(
             ],
         ),
     )
+    monkeypatch.setattr(cli, "execute_review_bet", lambda profile_dir, plan: None)
 
     with pytest.raises(ValueError):
         main(
@@ -170,6 +173,7 @@ def test_place_bet_uses_live_market_snapshot_contracts(
         ),
     )
     monkeypatch.setattr(cli, "write_action_log", lambda logs_dir, payload: tmp_path / "mock-log.json")
+    monkeypatch.setattr(cli, "execute_review_bet", lambda profile_dir, plan: None)
 
     assert (
         cli.main(
