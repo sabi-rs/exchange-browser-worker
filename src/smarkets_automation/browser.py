@@ -3,7 +3,9 @@ from pathlib import Path
 from smarkets_automation.orders import PreflightPlan
 
 
+PRIMARY_MARKET_SELECTOR = "div[class*='CompetitorsEventPrimaryMarket_primaryContracts']"
 CONTRACT_ROW_SELECTOR = "div[class*='ContractRow_row']"
+STAKE_INPUT_SELECTOR = "input[aria-label='Stake input']"
 
 
 def _ensure_owned_profile_dir(profile_dir: Path) -> Path:
@@ -51,6 +53,20 @@ def wait_for_contract_rows(page) -> None:
     page.wait_for_selector(CONTRACT_ROW_SELECTOR)
 
 
+def primary_market_contract_row(page, contract_label: str):
+    return page.locator(PRIMARY_MARKET_SELECTOR).first.locator(CONTRACT_ROW_SELECTOR).filter(
+        has=page.get_by_text(contract_label, exact=True),
+    ).first
+
+
+def fill_stake_input(page, stake: str) -> None:
+    page.wait_for_selector(STAKE_INPUT_SELECTOR)
+    stake_input = page.locator(STAKE_INPUT_SELECTOR).first
+    if stake_input.count() == 0:
+        raise ValueError("Stake input was not found on the live page")
+    stake_input.fill(stake)
+
+
 def _populate_bet_slip(profile_dir: Path, plan: PreflightPlan):
     owned_profile_dir = _ensure_owned_profile_dir(profile_dir)
     owned_profile_dir.mkdir(parents=True, exist_ok=True)
@@ -66,9 +82,7 @@ def _populate_bet_slip(profile_dir: Path, plan: PreflightPlan):
     page.goto(plan.event_url, wait_until="domcontentloaded")
     wait_for_contract_rows(page)
 
-    contract_row = page.locator(CONTRACT_ROW_SELECTOR).filter(
-        has=page.get_by_text(plan.contract_label, exact=True),
-    ).first
+    contract_row = primary_market_contract_row(page, plan.contract_label)
     if contract_row.count() == 0:
         context.close()
         playwright.stop()
@@ -81,6 +95,7 @@ def _populate_bet_slip(profile_dir: Path, plan: PreflightPlan):
         raise ValueError("Requested side button was not found on the live page")
 
     side_button.first.click()
+    fill_stake_input(page, plan.stake)
     return playwright, context, page
 
 

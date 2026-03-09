@@ -5,8 +5,12 @@ import pytest
 from smarkets_automation import cli
 from smarkets_automation.browser import (
     CONTRACT_ROW_SELECTOR,
+    PRIMARY_MARKET_SELECTOR,
+    STAKE_INPUT_SELECTOR,
     bet_button_css_selector,
     bet_button_locator_text,
+    fill_stake_input,
+    primary_market_contract_row,
     wait_for_contract_rows,
 )
 from smarkets_automation.market_snapshot import (
@@ -34,6 +38,109 @@ def test_wait_for_contract_rows_waits_for_contract_row_selector() -> None:
     wait_for_contract_rows(FakePage())
 
     assert waited["selector"] == CONTRACT_ROW_SELECTOR
+
+
+def test_primary_market_contract_row_scopes_lookup_to_primary_market() -> None:
+    calls: list[tuple[str, object]] = []
+
+    class FakeRowLocator:
+        first = None
+
+        def __init__(self) -> None:
+            self.first = self
+
+    fake_row = FakeRowLocator()
+
+    class FakeMarketLocator:
+        first = None
+
+        def __init__(self) -> None:
+            self.first = self
+
+        def locator(self, selector: str) -> "FakeMarketLocator":
+            calls.append(("market.locator", selector))
+            return self
+
+        def filter(self, *, has: object) -> FakeRowLocator:
+            calls.append(("market.filter", has))
+            return fake_row
+
+    fake_market = FakeMarketLocator()
+
+    class FakePage:
+        def locator(self, selector: str) -> FakeMarketLocator:
+            calls.append(("page.locator", selector))
+            return fake_market
+
+        def get_by_text(self, text: str, exact: bool = False) -> str:
+            calls.append(("page.get_by_text", (text, exact)))
+            return f"text:{text}:{exact}"
+
+    contract_row = primary_market_contract_row(FakePage(), "Arsenal")
+
+    assert contract_row is fake_row
+    assert calls == [
+        ("page.locator", PRIMARY_MARKET_SELECTOR),
+        ("market.locator", CONTRACT_ROW_SELECTOR),
+        ("page.get_by_text", ("Arsenal", True)),
+        ("market.filter", "text:Arsenal:True"),
+    ]
+
+
+def test_fill_stake_input_fills_requested_stake() -> None:
+    filled: dict[str, str] = {}
+
+    class FakeStakeInput:
+        first = None
+
+        def __init__(self) -> None:
+            self.first = self
+
+        def count(self) -> int:
+            return 1
+
+        def fill(self, value: str) -> None:
+            filled["value"] = value
+
+    fake_input = FakeStakeInput()
+
+    class FakePage:
+        def wait_for_selector(self, selector: str) -> None:
+            filled["waited_for"] = selector
+
+        def locator(self, selector: str) -> FakeStakeInput:
+            filled["selector"] = selector
+            return fake_input
+
+    fill_stake_input(FakePage(), "10")
+
+    assert filled == {
+        "waited_for": STAKE_INPUT_SELECTOR,
+        "selector": STAKE_INPUT_SELECTOR,
+        "value": "10",
+    }
+
+
+def test_fill_stake_input_fails_closed_when_input_is_missing() -> None:
+    class MissingStakeInput:
+        first = None
+
+        def __init__(self) -> None:
+            self.first = self
+
+        def count(self) -> int:
+            return 0
+
+    class FakePage:
+        def wait_for_selector(self, selector: str) -> None:
+            assert selector == STAKE_INPUT_SELECTOR
+
+        def locator(self, selector: str) -> MissingStakeInput:
+            assert selector == STAKE_INPUT_SELECTOR
+            return MissingStakeInput()
+
+    with pytest.raises(ValueError, match="Stake input was not found on the live page"):
+        fill_stake_input(FakePage(), "10")
 
 
 def test_place_bet_review_mode_calls_review_execution(
