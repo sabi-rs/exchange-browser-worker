@@ -19,6 +19,17 @@ def test_build_parser_exposes_expected_commands() -> None:
     parser = build_parser()
 
     for command in EXPECTED_COMMANDS - {"place-bet"}:
+        if command == "show-market":
+            assert (
+                parser.parse_args(
+                    ["show-market", "--event-url", "https://smarkets.com/example"],
+                ).command
+                == command
+            )
+            continue
+        if command == "search-events":
+            assert parser.parse_args(["search-events", "Arsenal Everton"]).command == command
+            continue
         assert parser.parse_args([command]).command == command
 
     assert (

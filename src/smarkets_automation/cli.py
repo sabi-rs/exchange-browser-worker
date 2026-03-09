@@ -6,8 +6,13 @@ from smarkets_automation.browser import browser_launch_args, launch_login_browse
 from smarkets_automation.config import AppPaths, detect_helium_profile
 from smarkets_automation.discovery import filter_event_candidates, parse_search_results
 from smarkets_automation.logging_utils import write_action_log
+from smarkets_automation.market_snapshot import build_standard_market_snapshot
 from smarkets_automation.orders import build_preflight
-from smarkets_automation.public_site import absolute_smarkets_url, load_public_page_html
+from smarkets_automation.public_site import (
+    absolute_smarkets_url,
+    load_event_page_html,
+    load_public_page_html,
+)
 
 
 COMMANDS = [
@@ -27,6 +32,8 @@ def build_parser() -> argparse.ArgumentParser:
         command_parser = subparsers.add_parser(command)
         if command == "search-events":
             command_parser.add_argument("query")
+        if command == "show-market":
+            command_parser.add_argument("--event-url", required=True)
         if command == "place-bet":
             command_parser.add_argument("--event-url", required=True)
             command_parser.add_argument("--contract", required=True)
@@ -56,6 +63,10 @@ def search_event_candidates(query: str) -> list[tuple[str, str]]:
     ]
 
 
+def load_standard_market_snapshot(event_url: str):
+    return build_standard_market_snapshot(event_url, load_event_page_html(event_url))
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
@@ -70,6 +81,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "search-events":
         for label, url in search_event_candidates(args.query):
             print(f"{label} {url}")
+
+    if args.command == "show-market":
+        snapshot = load_standard_market_snapshot(args.event_url)
+        print(snapshot.market_name)
+        for contract in snapshot.contracts:
+            buy_percent = f" buy={contract.buy_percent}" if contract.buy_percent else ""
+            sell_percent = f" sell={contract.sell_percent}" if contract.sell_percent else ""
+            print(f"{contract.label}{buy_percent}{sell_percent}")
 
     if args.command == "place-bet":
         plan = build_preflight(
