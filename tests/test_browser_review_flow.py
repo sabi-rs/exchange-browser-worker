@@ -6,7 +6,11 @@ from smarkets_automation import cli
 from smarkets_automation.browser import (
     CONTRACT_ROW_SELECTOR,
     PRIMARY_MARKET_SELECTOR,
+    SLIP_CONTRACT_SELECTOR,
+    SLIP_SIDE_TOGGLE_SELECTOR,
     STAKE_INPUT_SELECTOR,
+    assert_live_quote_matches_preflight,
+    assert_populated_bet_slip_matches_preflight,
     bet_button_css_selector,
     bet_button_locator_text,
     fill_stake_input,
@@ -17,6 +21,7 @@ from smarkets_automation.market_snapshot import (
     StandardContractSnapshot,
     StandardMarketSnapshot,
 )
+from smarkets_automation.orders import PreflightPlan
 
 
 def test_bet_button_locator_text_uses_contract_and_side() -> None:
@@ -141,6 +146,73 @@ def test_fill_stake_input_fails_closed_when_input_is_missing() -> None:
 
     with pytest.raises(ValueError, match="Stake input was not found on the live page"):
         fill_stake_input(FakePage(), "10")
+
+
+def test_assert_live_quote_matches_preflight_fails_closed_on_quote_drift() -> None:
+    class FakeButton:
+        first = None
+
+        def __init__(self) -> None:
+            self.first = self
+
+        def inner_text(self) -> str:
+            return "72%"
+
+    class FakeContractRow:
+        def locator(self, selector: str) -> FakeButton:
+            assert selector == bet_button_css_selector("buy")
+            return FakeButton()
+
+    with pytest.raises(ValueError, match="Live quote drift detected"):
+        assert_live_quote_matches_preflight(
+            FakeContractRow(),
+            PreflightPlan(
+                event_url="https://smarkets.com/football/example",
+                contract_label="Arsenal",
+                side="buy",
+                stake="10",
+                expected_percent="74%",
+                confirm=True,
+            ),
+        )
+
+
+def test_assert_populated_bet_slip_matches_preflight_checks_contract_side_and_stake() -> None:
+    class FakeSlipValue:
+        def __init__(self, text: str) -> None:
+            self._text = text
+            self.first = self
+
+        def count(self) -> int:
+            return 1
+
+        def inner_text(self) -> str:
+            return self._text
+
+        def input_value(self) -> str:
+            return self._text
+
+    class FakePage:
+        def locator(self, selector: str) -> FakeSlipValue:
+            if selector == SLIP_CONTRACT_SELECTOR:
+                return FakeSlipValue("Selected contractArsenal")
+            if selector == SLIP_SIDE_TOGGLE_SELECTOR:
+                return FakeSlipValue("Buy")
+            if selector == STAKE_INPUT_SELECTOR:
+                return FakeSlipValue("10")
+            raise AssertionError(selector)
+
+    assert_populated_bet_slip_matches_preflight(
+        FakePage(),
+        PreflightPlan(
+            event_url="https://smarkets.com/football/example",
+            contract_label="Arsenal",
+            side="buy",
+            stake="10",
+            expected_percent="74%",
+            confirm=False,
+        ),
+    )
 
 
 def test_place_bet_review_mode_calls_review_execution(

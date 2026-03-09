@@ -6,8 +6,8 @@ from smarkets_automation.cli import load_standard_market_snapshot
 
 
 DEFAULT_LIVE_EVENT_URL = (
-    "https://smarkets.com/event/44407959/sport/football/"
-    "england-premier-league/2025/05/11/15-30/liverpool-vs-arsenal"
+    "https://smarkets.com/football/england-premier-league/"
+    "2026/03/14/17-30/arsenal-vs-everton/44919794/"
 )
 
 

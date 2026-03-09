@@ -1,4 +1,15 @@
 BASE_URL = "https://smarkets.com"
+EVENT_PAGE_READY_SELECTOR = "div[class*='CompetitorsEventPrimaryMarket_primaryContracts']"
+EVENT_PAGE_QUOTE_READY_JS = """
+() => {
+  const market = document.querySelector("div[class*='CompetitorsEventPrimaryMarket_primaryContracts']");
+  if (!market) {
+    return false;
+  }
+  const button = market.querySelector("button[class*='BetButton_buy']");
+  return Boolean(button && button.textContent && button.textContent.trim());
+}
+"""
 
 
 def absolute_smarkets_url(path: str) -> str:
@@ -21,7 +32,18 @@ def load_public_page_html(url: str) -> str:
 
 
 def load_event_page_html(event_url: str) -> str:
-    return load_public_page_html(event_url)
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        try:
+            page.goto(absolute_smarkets_url(event_url), wait_until="domcontentloaded")
+            page.wait_for_selector(EVENT_PAGE_READY_SELECTOR)
+            page.wait_for_function(EVENT_PAGE_QUOTE_READY_JS)
+            return page.content()
+        finally:
+            browser.close()
 
 
 def load_search_results_html(query: str) -> str:

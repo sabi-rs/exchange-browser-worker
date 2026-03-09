@@ -27,3 +27,5 @@ def test_show_market_prints_standard_market_snapshot(capsys, monkeypatch) -> Non
     assert exit_code == 0
     assert "Full-time result" in captured.out
     assert "Arsenal" in captured.out
+    assert "buy=73%" in captured.out
+    assert "sell=74%" in captured.out
