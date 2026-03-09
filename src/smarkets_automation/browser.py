@@ -3,6 +3,9 @@ from pathlib import Path
 from smarkets_automation.orders import PreflightPlan
 
 
+CONTRACT_ROW_SELECTOR = "div[class*='ContractRow_row']"
+
+
 def _ensure_owned_profile_dir(profile_dir: Path) -> Path:
     resolved_profile_dir = profile_dir.expanduser()
     if resolved_profile_dir.parts[-2:] == ("net.imput.helium", "Default"):
@@ -40,6 +43,14 @@ def bet_button_locator_text(contract_label: str, side: str) -> str:
     return f"{contract_label}|{side.lower()}"
 
 
+def bet_button_css_selector(side: str) -> str:
+    return f"button[class*='BetButton_{side.lower()}']"
+
+
+def wait_for_contract_rows(page) -> None:
+    page.wait_for_selector(CONTRACT_ROW_SELECTOR)
+
+
 def _populate_bet_slip(profile_dir: Path, plan: PreflightPlan):
     owned_profile_dir = _ensure_owned_profile_dir(profile_dir)
     owned_profile_dir.mkdir(parents=True, exist_ok=True)
@@ -53,14 +64,17 @@ def _populate_bet_slip(profile_dir: Path, plan: PreflightPlan):
     )
     page = context.pages[0] if context.pages else context.new_page()
     page.goto(plan.event_url, wait_until="domcontentloaded")
+    wait_for_contract_rows(page)
 
-    contract_row = page.get_by_text(plan.contract_label, exact=True)
+    contract_row = page.locator(CONTRACT_ROW_SELECTOR).filter(
+        has=page.get_by_text(plan.contract_label, exact=True),
+    ).first
     if contract_row.count() == 0:
         context.close()
         playwright.stop()
         raise ValueError("Contract row was not found on the live page")
 
-    side_button = page.get_by_text(bet_button_locator_text(plan.contract_label, plan.side))
+    side_button = contract_row.locator(bet_button_css_selector(plan.side))
     if side_button.count() == 0:
         context.close()
         playwright.stop()

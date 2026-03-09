@@ -3,7 +3,12 @@ from pathlib import Path
 import pytest
 
 from smarkets_automation import cli
-from smarkets_automation.browser import bet_button_locator_text
+from smarkets_automation.browser import (
+    CONTRACT_ROW_SELECTOR,
+    bet_button_css_selector,
+    bet_button_locator_text,
+    wait_for_contract_rows,
+)
 from smarkets_automation.market_snapshot import (
     StandardContractSnapshot,
     StandardMarketSnapshot,
@@ -12,6 +17,23 @@ from smarkets_automation.market_snapshot import (
 
 def test_bet_button_locator_text_uses_contract_and_side() -> None:
     assert bet_button_locator_text("Arsenal", "buy") == "Arsenal|buy"
+
+
+def test_bet_button_css_selector_uses_side_specific_button_class() -> None:
+    assert bet_button_css_selector("buy") == "button[class*='BetButton_buy']"
+    assert bet_button_css_selector("sell") == "button[class*='BetButton_sell']"
+
+
+def test_wait_for_contract_rows_waits_for_contract_row_selector() -> None:
+    waited: dict[str, str] = {}
+
+    class FakePage:
+        def wait_for_selector(self, selector: str) -> None:
+            waited["selector"] = selector
+
+    wait_for_contract_rows(FakePage())
+
+    assert waited["selector"] == CONTRACT_ROW_SELECTOR
 
 
 def test_place_bet_review_mode_calls_review_execution(
