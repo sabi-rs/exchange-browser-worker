@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from html.parser import HTMLParser
+import re
 
 
 @dataclass(frozen=True)
@@ -47,3 +48,25 @@ def parse_search_results(html: str) -> list[EventCandidate]:
     parser = _SearchResultsParser()
     parser.feed(html)
     return parser.results
+
+
+def filter_event_candidates(
+    candidates: list[EventCandidate],
+    query: str,
+) -> list[EventCandidate]:
+    query_tokens = re.findall(r"[a-z0-9]+", query.lower())
+    if not query_tokens:
+        raise ValueError("query must contain at least one search token")
+
+    filtered: list[EventCandidate] = []
+    seen_urls: set[str] = set()
+    for candidate in candidates:
+        label_text = candidate.label.lower()
+        if not all(token in label_text for token in query_tokens):
+            continue
+        if candidate.url in seen_urls:
+            continue
+        seen_urls.add(candidate.url)
+        filtered.append(candidate)
+
+    return filtered

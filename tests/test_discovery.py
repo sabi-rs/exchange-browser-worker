@@ -1,6 +1,12 @@
 from pathlib import Path
 
-from smarkets_automation.discovery import parse_search_results
+import pytest
+
+from smarkets_automation.discovery import (
+    EventCandidate,
+    filter_event_candidates,
+    parse_search_results,
+)
 
 
 def test_parse_search_results_extracts_event_candidates() -> None:
@@ -11,3 +17,11 @@ def test_parse_search_results_extracts_event_candidates() -> None:
 
     assert results[0].label == "Premier League Arsenal vs Everton 14 Mar 5:30 PM"
     assert results[0].url.endswith("/arsenal-vs-everton/")
+
+
+def test_filter_event_candidates_rejects_empty_queries() -> None:
+    with pytest.raises(ValueError):
+        filter_event_candidates(
+            [EventCandidate(label="Arsenal Everton", url="/football/example")],
+            "   ",
+        )
