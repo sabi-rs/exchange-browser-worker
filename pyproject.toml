@@ -7,6 +7,14 @@ name = "smarkets-automation"
 version = "0.1.0"
 description = "Smarkets browser automation CLI."
 requires-python = ">=3.11"
+dependencies = [
+    "playwright>=1.58.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<10",
+]
 
 [project.scripts]
 smarkets = "smarkets_automation.cli:main"

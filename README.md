@@ -8,6 +8,6 @@ It is currently focused on Smarkets session bootstrap, market discovery, quote e
 
 ```bash
 uv venv .venv --python 3.11
-uv pip install --python .venv/bin/python -e .
+uv pip install --python .venv/bin/python -e '.[dev]'
 .venv/bin/python -m pytest -v
 ```
